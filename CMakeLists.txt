@@ -37,6 +37,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv.*")
   set (CMAKE_FIND_ROOT_PATH ${WEBRTCROOT}/src/build/linux/debian_bullseye_arm-sysroot)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
   set (CMAKE_FIND_ROOT_PATH ${WEBRTCROOT}/src/build/linux/debian_bullseye_arm64-sysroot)
+  add_compile_options(--sysroot=${CMAKE_FIND_ROOT_PATH})
 endif()
 MESSAGE("CMAKE_FIND_ROOT_PATH = ${CMAKE_FIND_ROOT_PATH}")
 
@@ -52,7 +53,7 @@ MESSAGE("PulseAudio_FOUND = ${PulseAudio_FOUND}")
 set (WEBRTCOBJS ${WEBRTCROOT}/src/out/${CMAKE_BUILD_TYPE}/obj)
 
 if (NOT EXISTS ${WEBRTCOBJS}/${CMAKE_STATIC_LIBRARY_PREFIX}webrtc${CMAKE_STATIC_LIBRARY_SUFFIX})
-  set (WEBRTCARGS rtc_include_tests=false\nrtc_enable_protobuf=false\nrtc_build_examples=false\nrtc_build_tools=false\ntreat_warnings_as_errors=false\nrtc_enable_libevent=false\nrtc_build_libevent=false\n)
+  set (WEBRTCARGS rtc_include_tests=false\nrtc_enable_protobuf=false\nrtc_build_examples=false\nrtc_build_tools=false\ntreat_warnings_as_errors=false\nrtc_enable_libevent=false\nrtc_build_libevent=false\nuse_glib=false\nuse_lld=false\n)
   set (WEBRTCARGS use_custom_libcxx=false\n${WEBRTCARGS})
   # debug/release
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -139,15 +140,13 @@ if (NOT EXISTS ${WEBRTCOBJS}/${CMAKE_STATIC_LIBRARY_PREFIX}webrtc${CMAKE_STATIC_
   endif()
   EXECUTE_PROCESS(WORKING_DIRECTORY ${WEBRTCROOT}/src/out/${CMAKE_BUILD_TYPE} COMMAND ${SHELLCOMMAND} gn gen .)  
   SET(NINJA_TARGET webrtc rtc_json builtin_video_decoder_factory builtin_video_encoder_factory p2p_server_utils task_queue default_task_queue_factory)
-  EXECUTE_PROCESS(WORKING_DIRECTORY ${WEBRTCROOT}/src/out/${CMAKE_BUILD_TYPE} COMMAND ${SHELLCOMMAND} ninja -l10 ${NINJA_TARGET})
+  EXECUTE_PROCESS(WORKING_DIRECTORY ${WEBRTCROOT}/src/out/${CMAKE_BUILD_TYPE} COMMAND ${SHELLCOMMAND} ninja ${NINJA_TARGET})
 endif() 
 
 
 FILE(GLOB_RECURSE WEBRTJSONCPPCOBJS ${WEBRTCOBJS}/third_party/jsoncpp/jsoncpp/*${CMAKE_C_OUTPUT_EXTENSION} ${WEBRTCOBJS}/rtc_base/rtc_json/*${CMAKE_C_OUTPUT_EXTENSION})
-FILE(GLOB_RECURSE WEBRTVPXOBJS ${WEBRTCOBJS}/third_party/lib*/*${CMAKE_C_OUTPUT_EXTENSION})
 FILE(GLOB_RECURSE WEBRTP2POBJ ${WEBRTCOBJS}/p2p/p2p_server_utils/*${CMAKE_C_OUTPUT_EXTENSION})
-FILE(GLOB_RECURSE WEBRTCCOMOBJ ${WEBRTCOBJS}/modules/*${CMAKE_C_OUTPUT_EXTENSION} ${WEBRTCOBJS}/api/*${CMAKE_C_OUTPUT_EXTENSION})
-SET (WEBRTCEXTRAOBJS ${WEBRTJSONCPPCOBJS} ${WEBRTP2POBJ} ${WEBRTVPXOBJS} ${WEBRTCCOMOBJ})	
+SET (WEBRTCEXTRAOBJS ${WEBRTJSONCPPCOBJS} ${WEBRTP2POBJ} ${WEBRTCCOMOBJ})	
 
 # project target
 FILE(GLOB SOURCE src/*.cpp)
@@ -157,8 +156,9 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE inc)
 # webrtc 
 set (WEBRTCINCLUDE ${WEBRTCROOT}/src ${WEBRTCROOT}/src/third_party/abseil-cpp ${WEBRTCROOT}/src/third_party/jsoncpp/source/include  ${WEBRTCROOT}/src/third_party/jsoncpp/generated ${WEBRTCROOT}/src/third_party/libyuv/include)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${WEBRTCINCLUDE})
-FILE(GLOB_RECURSE LIBWEBRTC ${WEBRTCOBJS}/${CMAKE_STATIC_LIBRARY_PREFIX}*${CMAKE_STATIC_LIBRARY_SUFFIX})
-target_link_libraries (${CMAKE_PROJECT_NAME} ${LIBWEBRTC}) 
+target_link_libraries(${CMAKE_PROJECT_NAME} ${WEBRTCOBJS}/api/video_codecs/${CMAKE_STATIC_LIBRARY_PREFIX}builtin_video_encoder_factory${CMAKE_STATIC_LIBRARY_SUFFIX} ${WEBRTCOBJS}/api/video_codecs/${CMAKE_STATIC_LIBRARY_PREFIX}builtin_video_decoder_factory${CMAKE_STATIC_LIBRARY_SUFFIX})
+target_link_libraries(${CMAKE_PROJECT_NAME} ${WEBRTCOBJS}/media/${CMAKE_STATIC_LIBRARY_PREFIX}rtc_internal_video_codecs${CMAKE_STATIC_LIBRARY_SUFFIX} ${WEBRTCOBJS}/media/${CMAKE_STATIC_LIBRARY_PREFIX}rtc_simulcast_encoder_adapter${CMAKE_STATIC_LIBRARY_SUFFIX}) 
+target_link_libraries(${CMAKE_PROJECT_NAME} ${WEBRTCOBJS}/${CMAKE_STATIC_LIBRARY_PREFIX}webrtc${CMAKE_STATIC_LIBRARY_SUFFIX})
 add_definitions(-DHAVE_JPEG)
 
 # thread
@@ -240,7 +240,7 @@ else()
         target_link_libraries(${CMAKE_PROJECT_NAME} ${X11_LIBRARIES} ${X11_Xdamage_LIB} ${X11_Xfixes_LIB} ${X11_Xcomposite_LIB} ${X11_Xrandr_LIB} ${X11_Xtst_LIB})
     endif()
     # civetweb
-    target_link_libraries(${CMAKE_PROJECT_NAME} dl)
+    target_link_libraries(${CMAKE_PROJECT_NAME} dl)    
     #alsa
     if (ALSA_FOUND)
         add_definitions(-DHAVE_SOUND)
